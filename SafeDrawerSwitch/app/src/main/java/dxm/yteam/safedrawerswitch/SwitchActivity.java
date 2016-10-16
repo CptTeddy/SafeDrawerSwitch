@@ -4,6 +4,9 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
+import android.widget.Toast;
 
 public class SwitchActivity extends AppCompatActivity {
 
@@ -11,14 +14,55 @@ public class SwitchActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_switch);
+
+        Button buttonOn = (Button) findViewById(R.id.button_on);
+        Button buttonOff = (Button) findViewById(R.id.button_off);
+
+        buttonOn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String message = "on";
+                sendMessage(message);
+                Toast.makeText(getApplicationContext(), "Turned on!", Toast.LENGTH_SHORT).show();
+
+            }
+        });
+
+        buttonOff.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String message = "off";
+                sendMessage(message);
+                Toast.makeText(getApplicationContext(), "Turned off!", Toast.LENGTH_SHORT).show();
+
+            }
+        });
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_switch, menu);
-        return true;
+    private void sendMessage(String message) {
+        // Check that we're actually connected before trying anything
+        if (MainActivity.mChatService.getState() != BluetoothChatService.STATE_CONNECTED) {
+            Toast.makeText(this, "not connected", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Check that there's actually something to send
+        if (message.length() > 0) {
+            // Get the message bytes and tell the BluetoothChatService to write
+            byte[] send = message.getBytes();
+            MainActivity.mChatService.write(send);
+
+            // Reset out string buffer to zero and clear the edit text field
+//            MainActivity.mOutStringBuffer.setLength(0);
+        }
     }
+
+//    @Override
+//    public boolean onCreateOptionsMenu(Menu menu) {
+//        // Inflate the menu; this adds items to the action bar if it is present.
+//        getMenuInflater().inflate(R.menu.menu_switch, menu);
+//        return true;
+//    }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {

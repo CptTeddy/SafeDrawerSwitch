@@ -2,7 +2,7 @@
     <string name="app_name">Safe Drawer Switch</string>
 
     <string name="hello_world">Hello world!</string>
-    <string name="action_settings">Settings</string>
+    <string name="action_next">Next</string>
 
     <!-- Layouts -->
     <string name="connect_bt_prompt">Click me to choose your\n Safe Drawer device to connect</string>
