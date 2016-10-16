@@ -7,6 +7,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Handler;
+import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -20,6 +22,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.lang.ref.WeakReference;
 import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
@@ -29,6 +32,16 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_ENABLE_BT = 1;
 
+    // Message types sent from the BluetoothChatService Handler
+    public static final int MESSAGE_STATE_CHANGE = 1;
+    public static final int MESSAGE_READ = 2;
+    public static final int MESSAGE_WRITE = 3;
+    public static final int MESSAGE_DEVICE_NAME = 4;
+    public static final int MESSAGE_TOAST = 5;
+
+    // Key names received from the BluetoothChatService Handler
+    public static final String DEVICE_NAME = "device_name";
+    public static final String TOAST = "toast";
 
     private String mConnectedDeviceName = null;
     public static BluetoothChatService mChatService = null;
@@ -272,6 +285,67 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     };
+
+    private final Handler mHandler = new MessageHandler(this);
+
+    static class MessageHandler extends Handler {
+
+        private final WeakReference<Activity> mActivity;
+
+        MessageHandler(Activity activity) {
+            mActivity = new WeakReference<Activity>(activity);
+
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case MESSAGE_STATE_CHANGE:
+                    if(D) Log.i(TAG, "MESSAGE_STATE_CHANGE: " + msg.arg1);
+                    switch (msg.arg1) {
+                        case BluetoothChatService.STATE_CONNECTED:
+                            Toast.makeText(mActivity.get(), "connected to ${device_name}",
+                                    Toast.LENGTH_SHORT).show();
+                            break;
+                        case BluetoothChatService.STATE_CONNECTING:
+                            Toast.makeText(mActivity.get(), "connecting...",
+                                    Toast.LENGTH_SHORT).show();
+                            break;
+                        case BluetoothChatService.STATE_LISTEN:
+                        case BluetoothChatService.STATE_NONE:
+                            Toast.makeText(mActivity.get(), "not connected",
+                                    Toast.LENGTH_SHORT).show();
+                            break;
+                    }
+                    break;
+//                case MESSAGE_WRITE:
+//                    byte[] writeBuf = (byte[]) msg.obj;
+//                    // construct a string from the buffer
+//                    String writeMessage = new String(writeBuf);
+//                    break;
+//                case MESSAGE_READ:
+//                    byte[] readBuf = (byte[]) msg.obj;
+//                    // construct a string from the valid bytes in the buffer
+//                    String readMessage = new String(readBuf, 0, msg.arg1);
+//                    break;
+                case MESSAGE_DEVICE_NAME:
+                    // save the connected device's name
+                    String deviceName = msg.getData().getString(DEVICE_NAME);
+//                    mActivity.setConnectedDeviceName(deviceName);
+                    Toast.makeText(mActivity.get(), "Connected to "
+                            + deviceName, Toast.LENGTH_SHORT).show();
+                    break;
+                case MESSAGE_TOAST:
+                    Toast.makeText(mActivity.get(), msg.getData().getString(TOAST),
+                            Toast.LENGTH_SHORT).show();
+                    break;
+            }
+        }
+    };
+
+    public void setConnectedDeviceName(String name) {
+        mConnectedDeviceName = name;
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
