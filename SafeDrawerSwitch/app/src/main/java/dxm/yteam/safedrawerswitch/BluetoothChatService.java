@@ -108,10 +108,10 @@ public class BluetoothChatService {
         setState(STATE_LISTEN);
 
         // Start the thread to listen on a BluetoothServerSocket
-        if (mSecureAcceptThread == null) {
-            mSecureAcceptThread = new AcceptThread(true);
-            mSecureAcceptThread.start();
-        }
+//        if (mSecureAcceptThread == null) {
+//            mSecureAcceptThread = new AcceptThread(true);
+//            mSecureAcceptThread.start();
+//        }
         if (mInsecureAcceptThread == null) {
             mInsecureAcceptThread = new AcceptThread(false);
             mInsecureAcceptThread.start();
@@ -135,7 +135,8 @@ public class BluetoothChatService {
         if (mConnectedThread != null) {mConnectedThread.cancel(); mConnectedThread = null;}
 
         // Start the thread to connect with the given device
-        mConnectThread = new ConnectThread(device, secure);
+        int tries = 1;
+        mConnectThread = new ConnectThread(device, secure, tries);
         mConnectThread.start();
         setState(STATE_CONNECTING);
     }
@@ -222,6 +223,27 @@ public class BluetoothChatService {
         }
         // Perform the write unsynchronized
         r.write(out);
+    }
+
+    // Try connect again by starting another Connect Thread
+    private void tryConnectAgain(BluetoothDevice device, String secure) {
+        if (D) Log.d(TAG, "connect to: " + device);
+
+        // Cancel any thread attempting to make a connection
+        if (mState == STATE_CONNECTING) {
+            if (mConnectThread != null) {mConnectThread.cancel(); mConnectThread = null;}
+        }
+
+        // Cancel any thread currently running a connection
+        if (mConnectedThread != null) {mConnectedThread.cancel(); mConnectedThread = null;}
+
+        // Start the thread to connect with the given device
+        boolean secureFlag = secure.equals("Secure");
+        int tries = 0;
+        device = mAdapter.getRemoteDevice(device.getAddress());
+        mConnectThread = new ConnectThread(device, secureFlag, tries);
+        mConnectThread.start();
+        setState(STATE_CONNECTING);
     }
 
     /**
@@ -345,14 +367,16 @@ public class BluetoothChatService {
      * succeeds or fails.
      */
     private class ConnectThread extends Thread {
-        private final BluetoothSocket mmSocket;
-        private final BluetoothDevice mmDevice;
+        private BluetoothSocket mmSocket;
+        private BluetoothDevice mmDevice;
         private String mSocketType;
+        private int mTries;
 
-        public ConnectThread(BluetoothDevice device, boolean secure) {
+        public ConnectThread(BluetoothDevice device, boolean secure, int tries) {
             mmDevice = device;
             BluetoothSocket tmp = null;
             mSocketType = secure ? "Secure" : "Insecure";
+            mTries = tries;
 
             // Get a BluetoothSocket for a connection with the
             // given BluetoothDevice
@@ -383,6 +407,7 @@ public class BluetoothChatService {
                 // successful connection or an exception
                 mmSocket.connect();
             } catch (IOException e) {
+                Log.e(TAG, e.toString() + " Socket: " + mmSocket.toString());
                 // Close the socket
                 try {
                     mmSocket.close();
@@ -390,8 +415,33 @@ public class BluetoothChatService {
                     Log.e(TAG, "unable to close() " + mSocketType +
                             " socket during connection failure", e2);
                 }
-                connectionFailed();
-                return;
+
+                // Use channel 1 to create RFCOMM socket.
+                // It's a hidden method in Android source code, so we need to
+                // use fallback to find the method.
+                // Reference: http://stackoverflow.com/a/25647197/7059962
+                // Source code: https://github.com/android/platform_frameworks_base/blob/android-4.3_r2/core/java/android/bluetooth/BluetoothDevice.java#L1037
+                try {
+                    Log.e(TAG,"trying fallback...");
+
+                    mmSocket = (BluetoothSocket) (mmDevice.getClass()
+                            .getMethod("createRfcommSocket", new Class[]{int.class})
+                            .invoke(mmDevice, 1));
+                    mmSocket.connect();
+
+                } catch (Exception e1) {
+                    Log.e(TAG, "Failed fallback", e1);
+
+                    // Try connect again. If failed, report failing.
+                    if (mTries > 0) {
+                        tryConnectAgain(mmDevice, mSocketType);
+                    } else {
+                        connectionFailed();
+                    }
+                    return;
+
+                }
+
             }
 
             // Reset the ConnectThread because we're done
