@@ -22,10 +22,12 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.w3c.dom.Text;
+
 import java.lang.ref.WeakReference;
 import java.util.Set;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends Activity {
 
     private static final boolean D = true;    //Debugging mode
     private static final String TAG = "SafeDrawerSwitch";
@@ -58,7 +60,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
-        final TextView connectBt = (TextView) findViewById(R.id.connect_bt);
+        final Button connectBt = (Button) findViewById(R.id.connect_bt);
         final Button scanButton = (Button) findViewById(R.id.button_scan);
 
         connectBt.setOnClickListener(new View.OnClickListener() {
@@ -69,20 +71,13 @@ public class MainActivity extends AppCompatActivity {
                 mPairedDevicesArrayAdapter = new ArrayAdapter<String>(getApplicationContext(), R.layout.device_name);
                 mNewDevicesArrayAdapter = new ArrayAdapter<String>(getApplicationContext(), R.layout.device_name);
 
-                scanButton.setOnClickListener(new View.OnClickListener() {
-                    public void onClick(View v) {
-                        doDiscovery();
-                        v.setVisibility(View.GONE);
-                    }
-                });
-
                 // Find and set up the ListView for paired devices
-                ListView pairedListView = (ListView) findViewById(R.id.paired_devices);
+                final ListView pairedListView = (ListView) findViewById(R.id.paired_devices);
                 pairedListView.setAdapter(mPairedDevicesArrayAdapter);
                 pairedListView.setOnItemClickListener(mDeviceClickListener);
 
                 // Find and set up the ListView for newly discovered devices
-                ListView newDevicesListView = (ListView) findViewById(R.id.new_devices);
+                final ListView newDevicesListView = (ListView) findViewById(R.id.new_devices);
                 newDevicesListView.setAdapter(mNewDevicesArrayAdapter);
                 newDevicesListView.setOnItemClickListener(mDeviceClickListener);
 
@@ -97,10 +92,18 @@ public class MainActivity extends AppCompatActivity {
                 // Get a set of currently paired devices
                 Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
 
+                // Set a header to the list
+                TextView pairedHead = new TextView(getApplicationContext());
+                pairedHead.setText(R.string.title_paired_devices);
+                pairedHead.setTextColor(getResources().getColor(R.color.black));
+                pairedListView.addHeaderView(pairedHead);
+                pairedListView.setHeaderDividersEnabled(true);
+                pairedListView.setBottom(0);
+
                 // If there are paired devices, add each one to the ArrayAdapter
                 if (pairedDevices.size() > 0) {
-                    findViewById(R.id.title_paired_devices).setVisibility(View.VISIBLE);
-                    pairedListView.setVisibility(View.VISIBLE);
+//                    findViewById(R.id.title_paired_devices).setVisibility(View.VISIBLE);
+//                    pairedListView.setVisibility(View.VISIBLE);
                     for (BluetoothDevice device : pairedDevices) {
                         mPairedDevicesArrayAdapter.add(device.getName() + "\n" + device.getAddress());
                     }
@@ -109,7 +112,21 @@ public class MainActivity extends AppCompatActivity {
                     mPairedDevicesArrayAdapter.add(noDevices);
                 }
 
-                scanButton.setVisibility(View.VISIBLE);
+                // Set the action for scan button
+                scanButton.setOnClickListener(new View.OnClickListener() {
+                    public void onClick(View v) {
+                        // Set the header for new devices list
+                        TextView otherHead = new TextView(getApplicationContext());
+                        otherHead.setText(R.string.title_other_devices);
+                        otherHead.setTextColor(getResources().getColor(R.color.black));
+                        newDevicesListView.addHeaderView(otherHead);
+                        newDevicesListView.setHeaderDividersEnabled(true);
+
+                        // Do discovery for scanning
+                        doDiscovery();
+                    }
+                });
+
                 setTitle("Select or scan new");
 
             }
@@ -170,7 +187,11 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // Unregister broadcast listeners
-        this.unregisterReceiver(mReceiver);
+        try {
+            this.unregisterReceiver(mReceiver);
+        } catch (IllegalArgumentException e) {
+            Log.e(TAG, e.toString());
+        }
         if(D) Log.e(TAG, "--- ON DESTROY ---");
     }
 
@@ -221,7 +242,7 @@ public class MainActivity extends AppCompatActivity {
         setTitle(R.string.scanning);
 
         // Turn on sub-title for new devices
-        findViewById(R.id.title_new_devices).setVisibility(View.VISIBLE);
+//        findViewById(R.id.title_new_devices).setVisibility(View.VISIBLE);
 
         // If we're already discovering, stop it
         if (mBluetoothAdapter.isDiscovering()) {
@@ -240,22 +261,18 @@ public class MainActivity extends AppCompatActivity {
 
             // Get the device MAC address, which is the last 17 chars in the View
             String info = ((TextView) v).getText().toString();
+            if (info.length() <=17) {
+                return;
+            }
             String address = info.substring(info.length() - 17);
 
             // Get the BluetoothDevice object
             BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
 
             // Attempt to connect to the device
-            mChatService.connect(device, true);
+            // false means insecure connection
+            mChatService.connect(device, false);
 
-
-//            // Create the result Intent and include the MAC address
-//            Intent intent = new Intent();
-//            intent.putExtra(EXTRA_DEVICE_ADDRESS, address);
-//
-//            // Set result and finish this Activity
-//            setResult(Activity.RESULT_OK, intent);
-//            finish();
         }
     };
 
@@ -272,7 +289,13 @@ public class MainActivity extends AppCompatActivity {
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 // If it's already paired, skip it, because it's been listed already
                 if (device.getBondState() != BluetoothDevice.BOND_BONDED) {
-                    mNewDevicesArrayAdapter.add(device.getName() + "\n" + device.getAddress());
+                    String itemInfo = device.getName() + "\n" + device.getAddress();
+                    if (device.getName() == null ||
+                            mNewDevicesArrayAdapter.getPosition(itemInfo) != -1) {
+                        return;
+                    }
+                    mNewDevicesArrayAdapter.add(itemInfo);
+
                 }
                 // When discovery is finished, change the Activity title
             } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
@@ -304,8 +327,9 @@ public class MainActivity extends AppCompatActivity {
                     if(D) Log.i(TAG, "MESSAGE_STATE_CHANGE: " + msg.arg1);
                     switch (msg.arg1) {
                         case BluetoothChatService.STATE_CONNECTED:
-                            Toast.makeText(mActivity.get(), "connected to ${device_name}",
+                            Toast.makeText(mActivity.get(), "connected",
                                     Toast.LENGTH_SHORT).show();
+                            mActivity.get().setTitle("Click Next");
                             break;
                         case BluetoothChatService.STATE_CONNECTING:
                             Toast.makeText(mActivity.get(), "connecting...",
@@ -331,7 +355,7 @@ public class MainActivity extends AppCompatActivity {
                 case MESSAGE_DEVICE_NAME:
                     // save the connected device's name
                     String deviceName = msg.getData().getString(DEVICE_NAME);
-//                    mActivity.setConnectedDeviceName(deviceName);
+//                    mActivity.get().setConnectedDeviceName(deviceName);
                     Toast.makeText(mActivity.get(), "Connected to "
                             + deviceName, Toast.LENGTH_SHORT).show();
                     break;
@@ -363,6 +387,11 @@ public class MainActivity extends AppCompatActivity {
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
+            return true;
+        }
+        if (id == R.id.action_next) {
+            Intent nextIntent = new Intent(this, SwitchActivity.class);
+            startActivity(nextIntent);
             return true;
         }
 

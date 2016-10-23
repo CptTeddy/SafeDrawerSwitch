@@ -4,4 +4,5 @@
     <color name="theme_darker">#00A4DB</color>
     <color name="navigation_bar">#1AC6FF</color>
     <color name="light_background">#B3ECFF</color>
+    <color name="black">@android:color/black</color>
 </resources>

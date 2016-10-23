@@ -1,21 +1,23 @@
 <resources>
-    <string name="app_name">Safe Drawer Switch</string>
+    <string name="app_name">SafeDrawerSwitch</string>
 
     <string name="hello_world">Hello world!</string>
     <string name="action_next">Next</string>
+    <string name="action_settings">Settings</string>
 
     <!-- Layouts -->
-    <string name="connect_bt_prompt">Click me to choose your\n Safe Drawer device to connect</string>
+    <!--<string name="connect_bt_prompt">Click me to choose your\n Safe Drawer device to connect</string>-->
+    <string name="connect_bt_prompt">Show paired devices</string>
     <string name="title_paired_devices">Paired Devices</string>
     <string name="title_other_devices">Other Devices</string>
     <string name="button_scan">Scan for new devices</string>
 
     <!-- Java -->
-    <string name="scanning">Scanning for devices</string>
-    <string name="select_device">Select a device to connect</string>
+    <string name="scanning">Scanning</string>
+    <string name="select_device">Select to connect</string>
     <string name="none_paired">No devices have been paired</string>
     <string name="none_found">No devices found</string>
     <string name="bt_not_enabled_leaving">Bluetooth was not enabled. Leaving Bluetooth Chat.</string>
-    <string name="title_activity_switch">SwitchActivity</string>
+    <string name="title_activity_switch">Switch</string>
 
 </resources>

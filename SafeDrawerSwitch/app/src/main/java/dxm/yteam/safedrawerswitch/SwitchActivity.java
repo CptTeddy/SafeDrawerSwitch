@@ -1,5 +1,6 @@
 package dxm.yteam.safedrawerswitch;
 
+import android.app.Activity;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.Menu;
@@ -8,7 +9,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
-public class SwitchActivity extends AppCompatActivity {
+public class SwitchActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -21,7 +22,7 @@ public class SwitchActivity extends AppCompatActivity {
         buttonOn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String message = "on";
+                String message = "1";
                 sendMessage(message);
                 Toast.makeText(getApplicationContext(), "Turned on!", Toast.LENGTH_SHORT).show();
 
@@ -31,7 +32,7 @@ public class SwitchActivity extends AppCompatActivity {
         buttonOff.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String message = "off";
+                String message = "0";
                 sendMessage(message);
                 Toast.makeText(getApplicationContext(), "Turned off!", Toast.LENGTH_SHORT).show();
 
